@@ -21,13 +21,23 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg2://tesla:tesla@localhost:5432/tesla_tracker"
 
     # Encryption
+    # TODO(you): generate a stable key and put it in .env, otherwise stored
+    # Tesla tokens cannot be decrypted after a restart. Generate with:
+    #   python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
     token_encryption_key: str = ""
 
     # Tesla Fleet API OAuth
-    tesla_client_id: str = ""
-    tesla_client_secret: str = ""
-    tesla_redirect_uri: str = ""
-    tesla_developer_domain: str = ""
+    # TODO(you): all four come from the Tesla Developer portal
+    #   (https://developer.tesla.com -> your app). Put them in backend/.env.
+    #   See README "Connect your own Tesla" for the full setup checklist.
+    tesla_client_id: str = ""        # TODO: Client ID from the Tesla Developer app
+    tesla_client_secret: str = ""    # TODO: Client Secret from the Tesla Developer app
+    tesla_redirect_uri: str = ""     # TODO: must EXACTLY match an Allowed Redirect URI in the portal
+    tesla_developer_domain: str = "" # TODO: the public HTTPS domain hosting your com.tesla.3p.public-key.pem
+    # TODO(you): pick the audience for YOUR account's region. North America/Asia-Pacific:
+    #   https://fleet-api.prd.na.vn.cloud.tesla.com
+    # Europe/Middle East/Africa:
+    #   https://fleet-api.prd.eu.vn.cloud.tesla.com
     tesla_audience: str = "https://fleet-api.prd.na.vn.cloud.tesla.com"
 
     # App behaviour

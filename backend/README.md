@@ -39,6 +39,48 @@ alembic upgrade head            # create schema (PostGIS extension + tables)
 | `TESLA_AUDIENCE` | Fleet API base, e.g. `https://fleet-api.prd.na.vn.cloud.tesla.com` |
 | `USE_MOCK_DATA` | `true` to serve mock data without Tesla/DB |
 
+## Connect your own Tesla (real data)
+
+> **Reality check:** Tesla's API has **no historical-trip endpoint**. You cannot
+> import trips from before you connect. This app records data *going forward*:
+> it polls your vehicle's current state and the reconstruction worker builds
+> trips from those samples. So "trip history" = everything since you connected.
+
+The quickest real path is **polling `vehicle_data`** (implemented in
+`app/services/tesla_fleet.py` + `app/services/poller.py`), which avoids setting
+up a Fleet Telemetry streaming server. Everything that needs a key from you is
+marked `TODO(you)` in the code (`app/config.py`, `.env.example`, the OAuth/Fleet
+services).
+
+Steps:
+
+1. Complete the **Tesla Developer setup** below (you need a public HTTPS domain
+   to host the public key — this is the real hurdle for a personal test).
+2. Fill `backend/.env` with the `TESLA_*` values and a stable
+   `TOKEN_ENCRYPTION_KEY`, and set **`USE_MOCK_DATA=false`**.
+3. Bring up the database and schema:
+   ```bash
+   docker compose up -d
+   alembic upgrade head
+   ```
+4. Authorize your account: open `GET /auth/tesla/start`, visit the returned
+   `authorize_url`, log in, and approve the **read-only** scopes. Tesla redirects
+   to `/auth/tesla/callback`, which stores your encrypted tokens and syncs your
+   vehicle list.
+5. Enable tracking for your car:
+   `POST /api/vehicles/{vehicle_id}/enable-tracking`.
+6. Start the read-only poller:
+   ```bash
+   python -m app.poll --interval 60
+   ```
+   Drive around; trips and parking events appear via the normal trip APIs and in
+   the iOS app (point it at the backend via `APIMode.live` in `AppEnvironment.swift`).
+
+> The poller only ever **reads** `vehicle_data`. It never sends a command and
+> never wakes the car (a wake call is not read-only) — if the car is asleep the
+> poll is simply skipped. Use a longer interval while parked so the car can sleep
+> and you don't drain its battery.
+
 ## Tesla Developer setup (real data)
 
 1. **Create an app** at <https://developer.tesla.com> → register a new
