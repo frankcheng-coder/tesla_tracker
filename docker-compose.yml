@@ -1,0 +1,23 @@
+# Local PostgreSQL + PostGIS for development.
+#   docker compose up -d
+# Then point DATABASE_URL at:
+#   postgresql+psycopg2://tesla:tesla@localhost:5432/tesla_tracker
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_USER: tesla
+      POSTGRES_PASSWORD: tesla
+      POSTGRES_DB: tesla_tracker
+    ports:
+      - "5432:5432"
+    volumes:
+      - tesla_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tesla -d tesla_tracker"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  tesla_pgdata:
