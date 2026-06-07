@@ -81,6 +81,78 @@ Steps:
 > poll is simply skipped. Use a longer interval while parked so the car can sleep
 > and you don't drain its battery.
 
+### Fastest official path (Cloudflare Tunnel) — step by step
+
+This gets the official Fleet API working locally in ~10 minutes without owning a
+domain. Cloudflare's free quick tunnel gives you a public HTTPS URL with **no
+browser-warning page** (so Tesla can fetch your public key).
+
+```bash
+# 0) one-time: install the tunnel tool
+brew install cloudflared
+
+# 1) generate your Tesla key pair (served at the well-known URL automatically)
+cd backend && source .venv/bin/activate
+python -m app.tesla_setup genkey
+
+# 2) start the backend
+USE_MOCK_DATA=false uvicorn app.main:app --port 8000
+#    (set DATABASE_URL + run `alembic upgrade head` first; `docker compose up -d`)
+
+# 3) in another terminal, expose it publicly
+cloudflared tunnel --url http://localhost:8000
+#    -> prints a URL like https://random-words.trycloudflare.com
+```
+
+Now use that tunnel host as your domain:
+
+4. **Create the Tesla Developer app** at <https://developer.tesla.com>:
+   - **Allowed Origin / domain**: `random-words.trycloudflare.com`
+   - **Redirect URI**: `https://random-words.trycloudflare.com/auth/tesla/callback`
+   - **Scopes**: tick **`vehicle_device_data`** and **`vehicle_location`** only.
+   - Copy the **Client ID** and **Client Secret**.
+
+5. **Fill `backend/.env`** and restart the server:
+   ```ini
+   USE_MOCK_DATA=false
+   TOKEN_ENCRYPTION_KEY=<python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())">
+   TESLA_CLIENT_ID=...
+   TESLA_CLIENT_SECRET=...
+   TESLA_DEVELOPER_DOMAIN=random-words.trycloudflare.com
+   TESLA_REDIRECT_URI=https://random-words.trycloudflare.com/auth/tesla/callback
+   TESLA_AUDIENCE=https://fleet-api.prd.na.vn.cloud.tesla.com   # EU: ...prd.eu...
+   ```
+
+6. **Verify + register your domain** with Tesla (one-time):
+   ```bash
+   python -m app.tesla_setup check             # public key URL should say OK
+   python -m app.tesla_setup register-partner  # registers the domain
+   ```
+
+7. **Authorize your account** (YOU log in on Tesla's page — the app never sees
+   your password): open
+   `https://random-words.trycloudflare.com/auth/tesla/start`, then visit the
+   returned `authorize_url`, sign in, approve the read-only scopes. Tesla
+   redirects to `/auth/tesla/callback`, which stores your encrypted tokens and
+   syncs your vehicles.
+
+8. **Enable tracking and start the read-only poller**:
+   ```bash
+   curl -X POST https://<tunnel>/api/vehicles/<vehicle_id>/enable-tracking
+   python -m app.poll --interval 60
+   ```
+   Drive around; trips, routes, and parking appear in the trip APIs and the iOS
+   app (set `APIMode.live(URL...)` in `AppEnvironment.swift`).
+
+> ⚠️ Quick-tunnel caveats: the `trycloudflare.com` host **changes every time you
+> restart** `cloudflared`, and you'd have to update the Tesla app + `.env` +
+> re-register. For anything beyond a quick test, use a stable domain (a named
+> Cloudflare tunnel, or your own).
+>
+> Endpoints/regions occasionally change — cross-check against the current
+> [Tesla Fleet API docs](https://developer.tesla.com/docs/fleet-api) if a step
+> returns an unexpected error.
+
 ## Tesla Developer setup (real data)
 
 1. **Create an app** at <https://developer.tesla.com> → register a new

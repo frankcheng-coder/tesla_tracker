@@ -19,6 +19,7 @@ from app.api.routes import (
     telemetry,
     trips,
     vehicles,
+    wellknown,
 )
 from app.config import get_settings
 
@@ -48,6 +49,7 @@ app.include_router(trips.router)
 app.include_router(map_history.router)
 app.include_router(parking.router)
 app.include_router(privacy.router)
+app.include_router(wellknown.router)
 
 
 @app.get("/health", tags=["meta"])

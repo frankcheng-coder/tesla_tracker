@@ -16,6 +16,9 @@ venv/
 *.sqlite
 *.db
 
+# Tesla EC key pair (NEVER commit the private key)
+backend/keys/
+
 # macOS
 .DS_Store
 

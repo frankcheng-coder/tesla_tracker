@@ -40,6 +40,12 @@ class Settings(BaseSettings):
     #   https://fleet-api.prd.eu.vn.cloud.tesla.com
     tesla_audience: str = "https://fleet-api.prd.na.vn.cloud.tesla.com"
 
+    # Path to the EC key pair. This server hosts the PUBLIC key at
+    #   /.well-known/appspecific/com.tesla.3p.public-key.pem
+    # Generate the pair with:  python -m app.tesla_setup genkey
+    tesla_public_key_path: str = "keys/com.tesla.3p.public-key.pem"
+    tesla_private_key_path: str = "keys/com.tesla.3p.private-key.pem"
+
     # App behaviour
     cors_origins: str = "*"
     use_mock_data: bool = True
